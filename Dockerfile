@@ -4,11 +4,11 @@ FROM runpod/worker-comfyui:5.5.1-base
 # install custom nodes into comfyui (first node with --mode remote to fetch updated cache)
 # (no custom registry nodes declared in the workflow)
 
-# download PBRify models from HuggingFace
+# download PBRify models (4x from HuggingFace, 1x from GitHub)
 RUN wget -O /comfyui/models/upscale_models/4x-PBRify_UpscalerSPAN_Neutral.pth "https://huggingface.co/easygoing0114/AI_upscalers/resolve/main/4x-PBRify_RPLKSRd_V3.pth"
-RUN wget -O /comfyui/models/upscale_models/1x-PBRify_Height.pth "https://huggingface.co/easygoing0114/AI_upscalers/resolve/main/1x-PBRify_Height.pth"
-RUN wget -O /comfyui/models/upscale_models/1x-PBRify_NormalV3.pth "https://huggingface.co/easygoing0114/AI_upscalers/resolve/main/1x-PBRify_NormalV3.pth"
-RUN wget -O /comfyui/models/upscale_models/1x-PBRify_RoughnessV2.pth "https://huggingface.co/easygoing0114/AI_upscalers/resolve/main/1x-PBRify_RoughnessV2.pth"
+RUN wget -O /comfyui/models/upscale_models/1x-PBRify_Height.pth "https://github.com/Kim2091/PBRify_Remix/raw/main/Models/1x-PBRify_Height.pth"
+RUN wget -O /comfyui/models/upscale_models/1x-PBRify_NormalV3.pth "https://github.com/Kim2091/PBRify_Remix/raw/main/Models/1x-PBRify_NormalV3.pth"
+RUN wget -O /comfyui/models/upscale_models/1x-PBRify_RoughnessV2.pth "https://github.com/Kim2091/PBRify_Remix/raw/main/Models/1x-PBRify_RoughnessV2.pth"
 
 # copy all input data (like images or videos) into comfyui (uncomment and adjust if needed)
 # COPY input/ /comfyui/input/

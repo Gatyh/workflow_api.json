@@ -12,7 +12,9 @@ RUN cd /comfyui/custom_nodes && \
 RUN wget -O /comfyui/models/upscale_models/4x-PBRify_UpscalerSPAN_Neutral.pth "https://huggingface.co/easygoing0114/AI_upscalers/resolve/main/4x-PBRify_RPLKSRd_V3.pth"
 RUN wget -O /comfyui/models/upscale_models/1x-PBRify_RoughnessV2.pth "https://github.com/Kim2091/PBRify_Remix/raw/main/Models/1x-PBRify_RoughnessV2.pth"
 
-# Deep Bump models will be downloaded automatically on first use
+# Download Deep Bump ONNX model (REQUIRED - not auto-downloaded in serverless)
+RUN mkdir -p /comfyui/models/deepbump && \
+    wget -O /comfyui/models/deepbump/deepbump256.onnx "https://github.com/HugoTini/DeepBump/raw/master/deepbump256.onnx"
 
 # copy all input data (like images or videos) into comfyui (uncomment and adjust if needed)
 # COPY input/ /comfyui/input/

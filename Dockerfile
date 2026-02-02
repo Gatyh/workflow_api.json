@@ -42,10 +42,18 @@ RUN wget -O /comfyui/models/upscale_models/1x-PBRify_RoughnessV2.pth \
 
 # -----------------------------------------------------------------------------
 # Deep Bump ONNX Model - Requis pour MTB workflows
+# Le modèle doit être dans /comfyui/models/deepbump/ ET dans le dossier MTB
 # -----------------------------------------------------------------------------
 RUN mkdir -p /comfyui/models/deepbump && \
     wget -O /comfyui/models/deepbump/deepbump256.onnx \
     "https://github.com/HugoTini/DeepBump/raw/master/deepbump256.onnx"
+
+# Aussi copier dans le dossier custom_nodes pour MTB (certaines versions le cherchent là)
+RUN mkdir -p /comfyui/custom_nodes/comfy_mtb/models && \
+    cp /comfyui/models/deepbump/deepbump256.onnx /comfyui/custom_nodes/comfy_mtb/models/
+
+# Installer les dépendances ONNX Runtime pour GPU
+RUN pip install onnxruntime-gpu
 
 # -----------------------------------------------------------------------------
 # Copy workflows (optional - can also be sent via API)

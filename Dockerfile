@@ -1,54 +1,95 @@
-# =============================================================================
-# ComfyUI Docker - 3DTexel PBR & Decal Generator
-# =============================================================================
-# Workflows disponibles:
-#   - workflow_api_pbrify.json          : PBR via PBRify (sans seamless)
-#   - workflow_api_pbrify_seamless.json : PBR via PBRify + Seamless
-#   - workflow_api_mtb_seamless.json    : PBR via MTB Deep Bump + Seamless
-#   - workflow_api_decal.json           : Decal generator (RGB + Alpha séparé)
-# =============================================================================
+# 3DTexel ComfyUI Workflows
 
-FROM runpod/worker-comfyui:5.5.1-base
+Repository contenant les workflows ComfyUI pour la génération PBR et Decal sur RunPod Serverless.
 
-# -----------------------------------------------------------------------------
-# Custom Nodes Installation
-# -----------------------------------------------------------------------------
+## Workflows Disponibles
 
-# 1. ComfyUI-MakeSeamlessTexture - Pour la génération de textures seamless
-RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/SparknightLLC/ComfyUI-MakeSeamlessTexture.git
+| Workflow | Description | Custom Nodes | Output |
+|----------|-------------|--------------|--------|
+| `workflow_api_pbrify.json` | PBR via PBRify (production actuelle) | - | Albedo, Height, Normal, Roughness, Metallic |
+| `workflow_api_pbrify_seamless.json` | PBR via PBRify + Seamless | MakeSeamlessTexture | Albedo, Height, Normal, Roughness, Metallic |
+| `workflow_api_mtb_seamless.json` | PBR via MTB Deep Bump + Seamless | MakeSeamlessTexture, comfy_mtb | Albedo, Height, Normal, Roughness |
+| `workflow_api_decal.json` | Decal Generator | comfy_mtb | Albedo, Opacity, Normal, Height, Roughness |
 
-# 2. comfy_mtb - Pour Deep Bump (Normal/Height generation de haute qualité)
-RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/melMass/comfy_mtb.git && \
-    cd comfy_mtb && \
-    pip install -r requirements.txt
+## Architecture des Workflows
 
-# -----------------------------------------------------------------------------
-# PBRify Models - Pour upscale et génération PBR
-# -----------------------------------------------------------------------------
+### PBRify (Standard)
+```
+LoadImage → 4x Upscale (PBRify) → Save Albedo
+                               → 1x Height (PBRify) → Save Height
+                               → 1x Normal (PBRify) → Save Normal
+                               → 1x Roughness (PBRify) → Save Roughness
+                               → Metallic Generator → Save Metallic
+```
 
-# 4x Upscaler
-RUN wget -O /comfyui/models/upscale_models/4x-PBRify_UpscalerSPAN_Neutral.pth \
-    "https://huggingface.co/easygoing0114/AI_upscalers/resolve/main/4x-PBRify_RPLKSRd_V3.pth"
+### PBRify + Seamless
+```
+LoadImage → SeamlessTextureRadialMask → 4x Upscale (PBRify) → [même que ci-dessus]
+```
 
-# PBR Map Generators (1x models)
-RUN wget -O /comfyui/models/upscale_models/1x-PBRify_Height.pth \
-    "https://github.com/Kim2091/PBRify_Remix/raw/main/Models/1x-PBRify_Height.pth"
-RUN wget -O /comfyui/models/upscale_models/1x-PBRify_NormalV3.pth \
-    "https://github.com/Kim2091/PBRify_Remix/raw/main/Models/1x-PBRify_NormalV3.pth"
-RUN wget -O /comfyui/models/upscale_models/1x-PBRify_RoughnessV2.pth \
-    "https://github.com/Kim2091/PBRify_Remix/raw/main/Models/1x-PBRify_RoughnessV2.pth"
+### MTB + Seamless
+```
+LoadImage → SeamlessTextureRadialMask → 4x Upscale (PBRify) → Save Albedo
+                                                            → Deep Bump (Color to Normals) → Save Normal
+                                                                                           → Deep Bump (Normals to Height) → Save Height
+                                                            → 1x Roughness (PBRify) → Save Roughness
+```
 
-# -----------------------------------------------------------------------------
-# Deep Bump ONNX Model - Requis pour MTB workflows
-# -----------------------------------------------------------------------------
-RUN mkdir -p /comfyui/models/deepbump && \
-    wget -O /comfyui/models/deepbump/deepbump256.onnx \
-    "https://github.com/HugoTini/DeepBump/raw/master/deepbump256.onnx"
+### Decal Generator
+```
+LoadImage (RGBA) → 4x Upscale RGB (PBRify) → Save Albedo
+                                           → Deep Bump (Normal) → Save Normal
+                                                                → Deep Bump (Height) → Save Height
+                                           → 1x Roughness (PBRify) → Save Roughness
+                → Extract Alpha → Upscale Alpha → Save Opacity
+```
 
-# -----------------------------------------------------------------------------
-# Copy workflows (optional - can also be sent via API)
-# -----------------------------------------------------------------------------
-# COPY workflows/ /comfyui/workflows/
-# COPY input/ /comfyui/input/
+## Custom Nodes Requis
+
+- **ComfyUI-MakeSeamlessTexture** - Pour les workflows seamless
+- **comfy_mtb** - Pour Deep Bump (Normal/Height de haute qualité)
+
+## Modèles Requis
+
+### PBRify Models
+- `4x-PBRify_UpscalerSPAN_Neutral.pth` - Upscale 4x
+- `1x-PBRify_Height.pth` - Génération Height
+- `1x-PBRify_NormalV3.pth` - Génération Normal
+- `1x-PBRify_RoughnessV2.pth` - Génération Roughness
+
+### Deep Bump Model
+- `deepbump256.onnx` - Pour MTB Deep Bump
+
+## Déploiement RunPod
+
+```bash
+# Build Docker
+docker build -t 3dtexel-comfyui .
+
+# Push vers registry
+docker tag 3dtexel-comfyui your-registry/3dtexel-comfyui:latest
+docker push your-registry/3dtexel-comfyui:latest
+```
+
+## API Usage
+
+Envoyer le workflow via l'API RunPod avec l'image en base64:
+
+```json
+{
+  "input": {
+    "workflow": "<workflow_json>",
+    "images": [
+      {
+        "name": "input_texture.png",
+        "image": "<base64_encoded_image>"
+      }
+    ]
+  }
+}
+```
+
+## Changelog
+
+- **v2.0** - Ajout workflows Seamless + Decal Generator
+- **v1.0** - Workflow PBRify initial
